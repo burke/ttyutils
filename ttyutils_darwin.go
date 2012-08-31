@@ -28,13 +28,13 @@ type cc_t byte       // unsigned char
 type speed_t uint64  // unsigned long
 
 type Termios struct {
-	c_iflag tcflag_t       /* input flags */
-	c_oflag tcflag_t       /* output flags */
-	c_cflag tcflag_t       /* control flags */
-	c_lflag tcflag_t       /* local flags */
-	c_cc[termios_NCCS] cc_t /* control chars */
-	c_ispeed speed_t      /* input speed */
-	c_ospeed speed_t      /* output speed */
+	Iflag tcflag_t       /* input flags */
+	Oflag tcflag_t       /* output flags */
+	Cflag tcflag_t       /* control flags */
+	Lflag tcflag_t       /* local flags */
+	Cc[termios_NCCS] cc_t /* control chars */
+	Ispeed speed_t      /* input speed */
+	Ospeed speed_t      /* output speed */
 }
 
 func IsTerminal(fd uintptr) bool {
@@ -69,37 +69,24 @@ func ioctl(fd uintptr, cmd uintptr, ptr uintptr) error {
 	return nil
 }
 
-func MakeTerminalRaw(fd uintptr) error {
+func MakeTerminalRaw(fd uintptr) (*Termios, error) {
 	var s Termios
 	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(sys_TIOCGETA), uintptr(unsafe.Pointer(&s)), 0, 0, 0); err != 0 {
-		return err
+		return nil, err
 	}
 
-	s.c_iflag &^= sys_ISTRIP | sys_INLCR | sys_ICRNL | sys_IGNCR | sys_IXON | sys_IXOFF
-	s.c_lflag &^= sys_ECHO | sys_ICANON | sys_ISIG
+	oldState := s
+	s.Iflag &^= sys_ISTRIP | sys_INLCR | sys_ICRNL | sys_IGNCR | sys_IXON | sys_IXOFF
+	s.Lflag &^= sys_ECHO | sys_ICANON | sys_ISIG
 	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(sys_TIOCSETA), uintptr(unsafe.Pointer(&s)), 0, 0, 0); err != 0 {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &oldState, nil
 }
 
-
-// https://code.google.com/p/go/source/browse/ssh/terminal/util.go?repo=crypto&r=33d6505b6597ddd49a330ed2f8707bcb2c52318c
-/*
-func makeTerminalRaw(fd uintptr) error {
-	var s syscall.Termios
-	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TCGETS), uintptr(unsafe.Pointer(&s)), 0, 0, 0); err != 0 {
-		return err
-	}
-
-	s.Iflag &^= syscall.ISTRIP | syscall.INLCR | syscall.ICRNL | syscall.IGNCR | syscall.IXON | syscall.IXOFF
-	s.Lflag &^= syscall.ECHO | syscall.ICANON | syscall.ISIG
-	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TCSETS), uintptr(unsafe.Pointer(&s)), 0, 0, 0); err != 0 {
-		return err
-	}
-
-	return nil
+func RestoreTerminalState(fd uintptr, termios *Termios) error {
+	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), uintptr(sys_TIOCSETA), uintptr(unsafe.Pointer(termios)), 0, 0, 0)
+	return err
 }
 
-*/
