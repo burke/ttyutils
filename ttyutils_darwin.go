@@ -9,15 +9,12 @@ import (
 )
 
 const (
-	sys_TIOCGETA = 0x40487413
-	sys_TIOCSETA = 0x80487414
 	sys_ISTRIP = 0x20
 	sys_INLCR = 0x40
 	sys_ICRNL = 0x100
 	sys_IGNCR = 0x80
 	sys_IXON = 0x200
 	sys_IXOFF = 0x400
-	sys_ECHO = 0x8
 	sys_ICANON = 0x100
 	sys_ISIG = 0x80
 	termios_NCCS = 20
@@ -39,7 +36,7 @@ type Termios struct {
 
 func IsTerminal(fd uintptr) bool {
 	var termios Termios
-	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(sys_TIOCGETA), uintptr(unsafe.Pointer(&termios)), 0, 0, 0)
+	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TIOCGETA), uintptr(unsafe.Pointer(&termios)), 0, 0, 0)
 	return err == 0
 }
 
@@ -71,14 +68,14 @@ func ioctl(fd uintptr, cmd uintptr, ptr uintptr) error {
 
 func MakeTerminalRaw(fd uintptr) (*Termios, error) {
 	var s Termios
-	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(sys_TIOCGETA), uintptr(unsafe.Pointer(&s)), 0, 0, 0); err != 0 {
+	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TIOCGETA), uintptr(unsafe.Pointer(&s)), 0, 0, 0); err != 0 {
 		return nil, err
 	}
 
 	oldState := s
 	s.Iflag &^= sys_ISTRIP | sys_INLCR | sys_ICRNL | sys_IGNCR | sys_IXON | sys_IXOFF
-	s.Lflag &^= sys_ECHO | sys_ICANON | sys_ISIG
-	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(sys_TIOCSETA), uintptr(unsafe.Pointer(&s)), 0, 0, 0); err != 0 {
+	s.Lflag &^= syscall.ECHO | sys_ICANON | sys_ISIG
+	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TIOCSETA), uintptr(unsafe.Pointer(&s)), 0, 0, 0); err != 0 {
 		return nil, err
 	}
 
@@ -86,7 +83,7 @@ func MakeTerminalRaw(fd uintptr) (*Termios, error) {
 }
 
 func RestoreTerminalState(fd uintptr, termios *Termios) error {
-	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), uintptr(sys_TIOCSETA), uintptr(unsafe.Pointer(termios)), 0, 0, 0)
+	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), uintptr(syscall.TIOCSETA), uintptr(unsafe.Pointer(termios)), 0, 0, 0)
 	return err
 }
 
