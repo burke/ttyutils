@@ -1,10 +1,10 @@
 package ttyutils
 
 import (
-	"syscall"
 	"errors"
 	"fmt"
 	"os"
+	"syscall"
 	"unsafe"
 )
 
@@ -47,8 +47,10 @@ func MakeTerminalRaw(fd uintptr) (*syscall.Termios, error) {
 	}
 
 	oldState := s
-	s.Iflag &^= syscall.ISTRIP | syscall.INLCR | syscall.ICRNL | syscall.IGNCR | syscall.IXON | syscall.IXOFF
-	s.Lflag &^= syscall.ECHO | syscall.ICANON | syscall.ISIG
+	s.Iflag &^= syscall.ISTRIP | syscall.INLCR | syscall.ICRNL | syscall.IGNCR | syscall.IXON | syscall.IXOFF | syscall.IMAXBEL | syscall.BRKINT
+	s.Iflag |= syscall.IGNBRK
+	s.Lflag &^= syscall.ECHO | syscall.ICANON | syscall.ISIG | syscall.IEXTEN | syscall.ECHOE | syscall.ECHOK
+	s.Oflag &^= syscall.OPOST
 	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TCSETS), uintptr(unsafe.Pointer(&s)), 0, 0, 0); err != 0 {
 		return nil, err
 	}
@@ -60,6 +62,3 @@ func RestoreTerminalState(fd uintptr, termios *syscall.Termios) error {
 	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), uintptr(syscall.TCSETS), uintptr(unsafe.Pointer(termios)), 0, 0, 0)
 	return err
 }
-
-
-

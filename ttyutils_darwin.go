@@ -1,22 +1,29 @@
 package ttyutils
 
 import (
-	"syscall"
 	"errors"
 	"fmt"
 	"os"
+	"syscall"
 	"unsafe"
 )
 
 const (
-	sys_ISTRIP = 0x20
-	sys_INLCR = 0x40
-	sys_ICRNL = 0x100
-	sys_IGNCR = 0x80
-	sys_IXON = 0x200
-	sys_IXOFF = 0x400
-	sys_ICANON = 0x100
-	sys_ISIG = 0x80
+	ISTRIP       = 0x20
+	INLCR        = 0x40
+	ICRNL        = 0x100
+	IEXTEN       = 0x400
+	ECHOE        = 0x02
+	ECHOK        = 0x04
+	OPOST        = 0x01
+	IMAXBEL      = 0x2000
+	IGNBRK       = 0x01
+	BRKINT       = 0x02
+	IGNCR        = 0x80
+	IXON         = 0x200
+	IXOFF        = 0x400
+	ICANON       = 0x100
+	ISIG         = 0x80
 	termios_NCCS = 20
 )
 
@@ -25,13 +32,13 @@ type cc_t byte       // unsigned char
 type speed_t uint64  // unsigned long
 
 type Termios struct {
-	Iflag tcflag_t       /* input flags */
-	Oflag tcflag_t       /* output flags */
-	Cflag tcflag_t       /* control flags */
-	Lflag tcflag_t       /* local flags */
-	Cc[termios_NCCS] cc_t /* control chars */
-	Ispeed speed_t      /* input speed */
-	Ospeed speed_t      /* output speed */
+	Iflag  tcflag_t           /* input flags */
+	Oflag  tcflag_t           /* output flags */
+	Cflag  tcflag_t           /* control flags */
+	Lflag  tcflag_t           /* local flags */
+	Cc     [termios_NCCS]cc_t /* control chars */
+	Ispeed speed_t            /* input speed */
+	Ospeed speed_t            /* output speed */
 }
 
 func IsTerminal(fd uintptr) bool {
@@ -73,8 +80,10 @@ func MakeTerminalRaw(fd uintptr) (*Termios, error) {
 	}
 
 	oldState := s
-	s.Iflag &^= sys_ISTRIP | sys_INLCR | sys_ICRNL | sys_IGNCR | sys_IXON | sys_IXOFF
-	s.Lflag &^= syscall.ECHO | sys_ICANON | sys_ISIG
+	s.Iflag &^= ISTRIP | INLCR | ICRNL | IGNCR | IXON | IXOFF | IMAXBEL | BRKINT
+	s.Iflag |= IGNBRK
+	s.Lflag &^= syscall.ECHO | ICANON | ISIG | IEXTEN | ECHOE | ECHOK
+	s.Oflag &^= OPOST
 	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TIOCSETA), uintptr(unsafe.Pointer(&s)), 0, 0, 0); err != 0 {
 		return nil, err
 	}
@@ -86,4 +95,3 @@ func RestoreTerminalState(fd uintptr, termios *Termios) error {
 	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), uintptr(syscall.TIOCSETA), uintptr(unsafe.Pointer(termios)), 0, 0, 0)
 	return err
 }
-
