@@ -8,6 +8,8 @@ import (
 	"unsafe"
 )
 
+type Termios syscall.Termios
+
 func IsTerminal(fd uintptr) bool {
 	var termios syscall.Termios
 	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), uintptr(syscall.TCGETS), uintptr(unsafe.Pointer(&termios)), 0, 0, 0)
@@ -51,8 +53,8 @@ func ioctl(fd uintptr, cmd uintptr, ptr uintptr) error {
 	return nil
 }
 
-func NoEcho(fd uintptr) (*syscall.Termios, error) {
-	var s syscall.Termios
+func NoEcho(fd uintptr) (*Termios, error) {
+	var s Termios
 	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TCGETS), uintptr(unsafe.Pointer(&s)), 0, 0, 0); err != 0 {
 		return nil, err
 	}
@@ -66,8 +68,8 @@ func NoEcho(fd uintptr) (*syscall.Termios, error) {
 	return &oldState, nil
 }
 
-func MakeTerminalRaw(fd uintptr) (*syscall.Termios, error) {
-	var s syscall.Termios
+func MakeTerminalRaw(fd uintptr) (*Termios, error) {
+	var s Termios
 	if _, _, err := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TCGETS), uintptr(unsafe.Pointer(&s)), 0, 0, 0); err != 0 {
 		return nil, err
 	}
@@ -84,7 +86,7 @@ func MakeTerminalRaw(fd uintptr) (*syscall.Termios, error) {
 	return &oldState, nil
 }
 
-func RestoreTerminalState(fd uintptr, termios *syscall.Termios) error {
+func RestoreTerminalState(fd uintptr, termios *Termios) error {
 	_, _, err := syscall.Syscall6(syscall.SYS_IOCTL, uintptr(fd), uintptr(syscall.TCSETS), uintptr(unsafe.Pointer(termios)), 0, 0, 0)
 	return err
 }
